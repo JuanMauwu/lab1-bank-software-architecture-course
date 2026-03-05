@@ -19,6 +19,24 @@ public class TransactionService {
     @Autowired
     private CustomerRepository customerRepository; // Para validar cuentas
 
+    public List<TransactionDTO> getAllTransactions() {
+        // findAll() es un método mágico de JpaRepository que trae toda la tabla
+        List<Transaction> transactions = transactionRepository.findAll();
+
+        // Convertimos la lista de Entidades a lista de DTOs para enviarla al cliente
+        return transactions.stream().map(transaction -> {
+            TransactionDTO dto = new TransactionDTO();
+            dto.setId(transaction.getId());
+            dto.setSenderAccountNumber(transaction.getSenderAccountNumber());
+            dto.setReceiverAccountNumber(transaction.getReceiverAccountNumber());
+            dto.setAmount(transaction.getAmount());
+            dto.setTimestamp(transaction.getTimestamp());
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+
+
     public TransactionDTO transferMoney(TransactionDTO transactionDTO) {
         // Validar que los números de cuenta no sean nulos
         if (transactionDTO.getSenderAccountNumber() == null || transactionDTO.getReceiverAccountNumber() == null) {
@@ -66,7 +84,7 @@ public class TransactionService {
         return savedTransaction;
     }
 
-    public List<TransactionDTO> getTransactionsForAccount(String accountNumber) {
+    public List<TransactionDTO> getTransactionsByAccount(String accountNumber) {
         List<Transaction> transactions = transactionRepository.findBySenderAccountNumberOrReceiverAccountNumber(accountNumber, accountNumber);
         return transactions.stream().map(transaction -> {
             TransactionDTO dto = new TransactionDTO();
@@ -78,4 +96,49 @@ public class TransactionService {
             return dto;
         }).collect(Collectors.toList());
     }
+
+   public TransactionDTO getTransactionById(Long id) {
+        Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Transacción no encontrada"));
+
+       TransactionDTO dto = new TransactionDTO();
+       dto.setId(transaction.getId());
+       dto.setSenderAccountNumber(transaction.getSenderAccountNumber());
+       dto.setReceiverAccountNumber(transaction.getReceiverAccountNumber());
+       dto.setAmount(transaction.getAmount());
+       dto.setTimestamp(transaction.getTimestamp());
+       return dto;
+   }
+
+    public TransactionDTO updateTransaction(Long id, TransactionDTO transactionDTO) {
+        // Primero verificamos que la transacción exista
+        Transaction existingTransaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Transacción no encontrada"));
+
+        // Actualizamos los datos con lo que llegó en el DTO
+        existingTransaction.setSenderAccountNumber(transactionDTO.getSenderAccountNumber());
+        existingTransaction.setReceiverAccountNumber(transactionDTO.getReceiverAccountNumber());
+        existingTransaction.setAmount(transactionDTO.getAmount());
+        // Guardamos los cambios en la BD
+        Transaction updatedTransaction = transactionRepository.save(existingTransaction);
+
+        // Devolvemos el DTO actualizado
+        TransactionDTO dto = new TransactionDTO();
+        dto.setId(updatedTransaction.getId());
+        dto.setSenderAccountNumber(updatedTransaction.getSenderAccountNumber());
+        dto.setReceiverAccountNumber(updatedTransaction.getReceiverAccountNumber());
+        dto.setAmount(updatedTransaction.getAmount());
+        dto.setTimestamp(updatedTransaction.getTimestamp());
+        return dto;
+    }
+
+    // 6.5 Eliminar una transacción
+    public void deleteTransaction(Long id) {
+        // Verificamos si existe antes de borrarla
+        if (!transactionRepository.existsById(id)) {
+            throw new IllegalArgumentException("Transacción no encontrada");
+        }
+        transactionRepository.deleteById(id);
+    }
+
 }
